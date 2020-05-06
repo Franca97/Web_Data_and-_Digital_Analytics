@@ -21,6 +21,7 @@ DM2 <- remove_empty(DM2, which = c("rows", "cols"), quiet = TRUE)
 #CSV files to directly use in Gephi
 write.csv(DM1,file="airports.csv",row.names=F) 
 write.csv(DM2,file="countries.csv",row.names=F)
+write_xlsx(as.data.frame(DM2),"countries.xlsx",col_names=T)
 
 n1 <- graph.edgelist(DM1,directed = TRUE) 
 n2 <- graph.edgelist(DM2,directed = TRUE) 

@@ -9,6 +9,7 @@ library(twitteR)
 library(ldatuning)
 library(topicmodels)
 library(tm)
+
 #'Login to twitter developer
 options(httr_oauth_cache=T)
 my_api_key             <- "DdLxsLaCKmd7WTJx478P0E10j"
@@ -32,7 +33,7 @@ library(tm)
 corpus <- Corpus(VectorSource(tweets_df_emmawatson$text))
 tdm_emmawatson <- TermDocumentMatrix(corpus, control = list(removePunctuation = TRUE, stopwords=TRUE, stemming=TRUE))
 tdm_emmawatson
-
+gi
 #visualize data emmawatson
 
 library(wordcloud)
@@ -83,7 +84,7 @@ corpus_bojo <- tm_map(corpus_bojo, changeStrangeApostrophes)
 #' Remove URLs 
 
 removeURL <- content_transformer(function(x) gsub("(f|ht)tp(s?)://\\S+", "", x, perl=T))
-corpus_bojo <- tm_map(corpus_bojo, removeURL1)
+corpus_bojo <- tm_map(corpus_bojo, removeURL)
 
 
 #' Remove dashes and quotation marks 
@@ -143,7 +144,7 @@ topic_number_bojo <- FindTopicsNumber(
 FindTopicsNumber_plot(topic_number_bojo)  # six or seven topics 
 
 #' Run an LDA model 
-bojo_tweets_LDA <- LDA(dtm_bojo, k = 6, control = list(seed = 100))
+bojo_tweets_LDA <- LDA(dtm_bojo, k = 4, control = list(seed = 100))
 
 #' Get the Top 10 Terms for each topic 
 bojo_tidyLda <- tidy(bojo_tweets_LDA)
@@ -167,12 +168,41 @@ bojo_topTerms %>%
   coord_flip() + #flip graphs
   scale_x_discrete(labels = function(x) gsub("__.+$", "", x)) +
   labs(title = "Top 10 terms in each LDA topic",
-       x = NULL, y = expression(beta)) +  #set title annd y label. 
+       x = NULL, y = expression(beta)) +  #set title and y label. 
   facet_wrap(~ topic, ncol = 3, scales = "free") #divide by topic
 
-##' We still see the links 
+##' Sentiment Analysis 
+##' 
+#' Convert the initial data into Tidy Text Format 
+#' 
+library(stringr)
 
+tweets_df_bojo$id <- seq(1, nrow(tweets_df_bojo))
+tweets_unnested_bojo <- unnest_tokens(tweets_df_bojo, word, text)
 
+#' Remove stopwords and strange words 
+tweets_unnested_bojo <- tweets_unnested_bojo[!tweets_unnested_bojo$word %in% stop_words$word, ]
+tweets_unnested_bojo <- tweets_unnested_bojo[str_detect(tweets_unnested_bojo$word, "^[a-z']+$"),]
+
+#' Pick token polarity from AFINN Lexicon 
+tweets_unnested_bojo <- inner_join(tweets_unnested_bojo, get_sentiments("afinn"), by = "word")
+
+#' Compute average polarity per tweet 
+tweet_polarity_bojo <- aggregate(value ~ id, tweets_unnested_bojo, mean)
+tweets_df_bojo <- inner_join(tweets_df_bojo, tweet_polarity_bojo, by ="id") 
+
+#' Compute the average sentiment per date 
+
+date_sentiment_bojo <- aggregate(value ~ Dates, tweets_df_bojo, mean)
+
+#' Plot the average sentiment per date 
+
+ggplot(date_sentiment_bojo, aes(x = Dates, y = value)) +
+  geom_smooth(method="loess", size = 1, se=T, span = .5) +
+  geom_hline(yintercept = 0, color = "grey") +
+  ylab("Avg. Sentiment") +
+  xlab("Date") +
+  ggtitle("Sentiment Corona Mentions")
 
 
 
@@ -189,7 +219,7 @@ wordcloud(words = d2$word, freq = d2$freq, min.freq =2 ,
 
 
 
-
+---
 
 
 #scrape data theguardian

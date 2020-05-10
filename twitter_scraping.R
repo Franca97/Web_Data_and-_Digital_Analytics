@@ -1,6 +1,15 @@
-#login to twitter developer
+#'Setup
+#'Install Packages 
 
+library(dplyr) #' for sentiment analysis 
+library(tidytext) #' for sentiment analysis 
+library(ggplot2)
+install.packages("twitteR")
 library(twitteR)
+library(ldatuning)
+library(topicmodels)
+library(tm)
+#'Login to twitter developer
 options(httr_oauth_cache=T)
 my_api_key             <- "DdLxsLaCKmd7WTJx478P0E10j"
 my_api_secret          <- "NLrFfUgkfJVrs3UXoSSs4KGrzYFBu4BcjnpopIDM4az2EX3I4a"
@@ -8,8 +17,8 @@ my_access_token        <- "1252197116849672192-JkvDiU5dOe7WiLCn4BTXRPWQ3KpIoC"
 my_access_token_secret <- "91oR1BrHclWQZZUygvZOeQZYb4Rml7zkvk4HtNnZtqYDU"
 setup_twitter_oauth(my_api_key,my_api_secret,my_access_token,my_access_token_secret)
 
-#scrape data emmawatson
-
+#' Scrape Twitter Data 
+#' 
 tweets_emmawatson <- userTimeline("EmmaWatson", n=250)
 tweets_df_emmawatson <- twListToDF(tweets_emmawatson)
 dim(tweets_df_emmawatson)
@@ -33,28 +42,153 @@ v1 <- sort(rowSums(m1), decreasing=TRUE)
 d1 <- data.frame(word = names(v1),freq=v1)
 head(d1, 15)
 
-wordcloud(words = d1$word, freq = d$freq, min.freq =2 ,
+wordcloud(words = d1$word, freq = d1$freq, min.freq =2 ,
+          max.words=50, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+--- 
+
+
+#'
+#'  Boris Johnson Twitter Data
+#'  
+tweets_bojo <- userTimeline("BorisJohnson", n=1000) # userTimline to get the n first tweets 
+tweets_df_bojo <- twListToDF(tweets_bojo) # convert it into a dataframe
+dim(tweets_df_bojo) 
+tweets_bojo
+head(tweets_df_bojo)
+View(tweets_df_bojo)
+
+#' Checking Twitter Data 
+Dates <- format(as.POSIXct(strptime(tweets_df_bojo$created, format = "%Y-%m-%d %H:%M:%S",tz="")),format = "%Y-%m-%d") #' creating a date column from the created column 
+tweets_df_bojo$Dates <- Dates # add this column to the dataset 
+
+#' Count the number of mentions per day 
+mentions_per_day_bojo <- count(tweets_df_bojo, Dates)
+
+#' Plot the number of mentions per day to see if the amount of tweet increased with the corona spread 
+ggplot(mentions_per_day_bojo, aes(Dates, n)) + geom_point() 
+ggplot(mentions_per_day_bojo[mentions_per_day_bojo$Dates > "2020-05-01",], aes(Dates, n)) + geom_point() # adjust date 
+
+
+#' Extract the actual text and convert this corpus into a Term Document Matrix "borisjohnson"
+#' 
+corpus_bojo <- Corpus(VectorSource(tweets_df_bojo$text)) # extract actual text and store it in a corpus
+
+#' Pre-process the corpus 
+
+changeStrangeApostrophes <- content_transformer(function(x) {return (gsub('’', "'", x))})
+corpus_bojo <- tm_map(corpus_bojo, changeStrangeApostrophes)
+
+#' Remove URLs 
+
+removeURL <- content_transformer(function(x) gsub("(f|ht)tp(s?)://\\S+", "", x, perl=T))
+corpus_bojo <- tm_map(corpus_bojo, removeURL1)
+
+
+#' Remove dashes and quotation marks 
+remove <- content_transformer(function(x, pattern) {return (gsub(pattern, '', x))})
+corpus_bojo <- tm_map(corpus_bojo, remove, '—')
+corpus_bojo <- tm_map(corpus_bojo, remove, '-')
+corpus_bojo <- tm_map(corpus_bojo, remove, '€')
+corpus_bojo <- tm_map(corpus_bojo, remove, "'")
+corpus_bojo <- tm_map(corpus_bojo, remove, '“')
+corpus_bojo <- tm_map(corpus_bojo, remove, '”')
+corpus_bojo <- tm_map(corpus_bojo, remove, "/")
+corpus_bojo <- tm_map(corpus_bojo, remove, "@")
+corpus_bojo <- tm_map(corpus_bojo, remove, "\\|")
+
+#' Remove Numbers 
+corpus_bojo <- tm_map(corpus_bojo, removeNumbers)
+#' Remove punctuation
+corpus_bojo <- tm_map(corpus_bojo, removePunctuation)
+#' Stip whitespaces
+corpus_bojo <- tm_map(corpus_bojo, stripWhitespace)
+#' Text to lowercase
+corpus_bojo <- tm_map(corpus_bojo, content_transformer(tolower))
+#' Remove stopwords
+corpus_bojo <-  tm_map(corpus_bojo, removeWords, stopwords("english"))
+#' Stem the document 
+corpus_bojo <- tm_map(corpus_bojo, stemDocument, language = "english")
+
+#' Checking with wordcloud 
+wordcloud(corpus_bojo, colors=brewer.pal(8,"Dark2"), max.words = 200, min.freq = 3)
+
+#' Create a Document Term Matrix 
+
+dtm_bojo <- TermDocumentMatrix(corpus_bojo) 
+dtm_bojo
+
+#' Assign some identifier to Document names in the DTM 
+dtm_bojo$dimnames$Docs <- tweets_df_bojo$text
+
+#' Remove zero-entries from the DTM 
+dtm_bojo <- dtm_bojo[unique(dtm_bojo$i), ] # pick only non zero documents 
+dtm_bojo # has not changed anything?!
+
+#' Topic modeling 
+#' Find the optimal number of topics 
+
+topic_number_bojo <- FindTopicsNumber(
+  dtm_bojo, #DTM object
+  topics = seq(from = 2, to = 15, by = 1), #Number of topics to test, i.e. between 2 and 15
+  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"), #Metrics to check
+  control = list(seed = 100), #Random seed
+  verbose = TRUE
+  
+)
+
+#' Plot topic Models 
+#' 
+FindTopicsNumber_plot(topic_number_bojo)  # six or seven topics 
+
+#' Run an LDA model 
+bojo_tweets_LDA <- LDA(dtm_bojo, k = 6, control = list(seed = 100))
+
+#' Get the Top 10 Terms for each topic 
+bojo_tidyLda <- tidy(bojo_tweets_LDA)
+
+bojo_topTerms <- bojo_tidyLda %>% 
+  group_by(topic) %>% 
+  top_n(10, beta) %>% 
+  ungroup() %>% 
+  arrange(topic, -beta)
+
+
+bojo_topTerms %>% 
+  mutate(term = reorder(term, beta)) %>%
+  group_by(topic, term) %>%
+  arrange(desc(beta)) %>%
+  ungroup() %>% 
+  mutate(term = factor(paste(term, topic, sep = "__"),
+                       levels = rev(paste(term, topic, sep = "__")))) %>% #previous code is mainly done to order the terms per topic according to their beta
+  ggplot(aes(term, beta, fill = as.factor(topic))) + # x axis to term  y to beta and fill them according to the topic number
+  geom_col(show.legend = FALSE) + #column graph without legend
+  coord_flip() + #flip graphs
+  scale_x_discrete(labels = function(x) gsub("__.+$", "", x)) +
+  labs(title = "Top 10 terms in each LDA topic",
+       x = NULL, y = expression(beta)) +  #set title annd y label. 
+  facet_wrap(~ topic, ncol = 3, scales = "free") #divide by topic
+
+##' We still see the links 
+
+
+
+
+
+#' Wordcloud: to take a first look at the most frequency words and visualize it with a worldcloud 
+#' 
+m2 <- as.matrix(dtm_bojo)
+v2 <- sort(rowSums(m2), decreasing=TRUE)
+d2 <- data.frame(word = names(v2),freq=v2)
+head(d2, 15)
+
+wordcloud(words = d2$word, freq = d2$freq, min.freq =2 ,
           max.words=50, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
 
 
 
-
-#scrape data borisjohnson
-
-tweets_borisjohnson <- userTimeline("BorisJohnson", n=250)
-tweets_df_borisjohnson <- twListToDF(tweets_borisjohnson)
-dim(tweets_df_borisjohnson)
-tweets_borisjohnson
-head(tweets_df_borisjohnosn)
-
-#extract the actual text and convert this corpus into a Term Document Matrix borisjohnson
-
-library(tm)
-
-corpus <- Corpus(VectorSource(tweets_df_borisjohnson$text))
-tdm_borisjohnson <- TermDocumentMatrix(corpus, control = list(removePunctuation = TRUE, stopwords=TRUE, stemming=TRUE))
-tdm_borisjohnson
 
 
 
@@ -68,7 +202,6 @@ head(tweets_df_theguardian)
 
 #extract the actual text and convert this corpus into a Term Document Matrix theguardian
 
-library(tm)
 
 corpus <- Corpus(VectorSource(tweets_df_theguardian$text))
 tdm_theguardian <- TermDocumentMatrix(corpus, control = list(removePunctuation = TRUE, stopwords=TRUE, stemming=TRUE))

@@ -23,9 +23,9 @@ setup_twitter_oauth(my_api_key,my_api_secret,my_access_token,my_access_token_sec
 #'
 #'  X Twitter Data (generic name, just replace user in the first line and in the graph title)
 #'  
-tweets <- userTimeline("@realDonaldTrump", n=2500) # userTimline to get the n first tweets 
+tweets <- userTimeline("@LiamPayne", n=2500, includeRts=F) # userTimline to get the n first tweets 
 tweets_df <- twListToDF(tweets) # convert it into a dataframe
-
+tweets_df_Liam <- tweets_df
 
 #' Only keeping date after February 2020
 tweets_df$created <- as.Date(tweets_df$created, "%d/%m/%Y") # add this column to the dataset 
@@ -59,13 +59,73 @@ tweets_df <- inner_join(tweets_df, tweet_polarity, by ="id")
 date_sentiment <- aggregate(value ~ created, tweets_df, mean)
 
 #' Plot the average sentiment per date 
-jpeg("Trump.jpg", width = 1500)
-
+jpeg("Liam Payne.jpg", width = 1500)
 ggplot(date_sentiment, aes(x = created, y = value)) +
   geom_smooth(method="loess", size = 1, se=T, span = .5) +
   geom_hline(yintercept = 0, color = "grey") +
   ylab("Avg. Sentiment") +
   xlab("Date") +
-  ggtitle("Donald Trump Sentiment Evolution")
+  ggtitle("Liam Payne Sentiment Evolution")
+dev.off()
 
+#Wordcloud
+library(reshape2) #used for datawrangling using acast() function
+library(wordcloud)
+
+jpeg("Liam Payne Wordcloud.jpg", width = 1500)
+tweets_unnested %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("#F8766D", "#00BFC4"),
+                   max.words = 100)
+dev.off()
+
+#Country sentiment analysis
+USA_df <- rbind(tweets_df_bojo, tweets_df_Liam, tweets_df_BBC)
+
+#' Only keeping date after February 2020
+USA_df$created <- as.Date(USA_df$created, "%d/%m/%Y") # add this column to the dataset 
+USA_df <- USA_df %>% filter(created >="2020-02-01")
+
+#' Convert the initial data into Tidy Text Format 
+
+USA_df$id <- seq(1, nrow(USA_df))
+tweets_unnested <- unnest_tokens(USA_df, word, text)
+
+#' Remove stopwords and strange words 
+tweets_unnested <- tweets_unnested[!tweets_unnested$word %in% stop_words$word, ]
+tweets_unnested <- tweets_unnested[str_detect(tweets_unnested$word, "^[a-z']+$"),]
+
+#' Pick token polarity from AFINN Lexicon 
+tweets_unnested <- inner_join(tweets_unnested, get_sentiments("afinn"), by = "word")
+
+#' Compute average polarity per tweet 
+tweet_polarity <- aggregate(value ~ id, tweets_unnested, mean)
+USA_df <- inner_join(USA_df, tweet_polarity, by ="id") 
+
+#' Compute the average sentiment per date 
+date_sentiment <- aggregate(value ~ created, USA_df, mean)
+
+#' Plot the average sentiment per date 
+jpeg("UK.jpg", width = 1500)
+ggplot(date_sentiment, aes(x = created, y = value)) +
+  geom_smooth(method="loess", size = 1, se=T, span = .5) +
+  geom_hline(yintercept = 0, color = "grey") +
+  ylab("Avg. Sentiment") +
+  xlab("Date") +
+  ggtitle("UK Sentiment Evolution")
+dev.off()
+
+#Wordcloud
+library(reshape2) #used for datawrangling using acast() function
+library(wordcloud)
+
+jpeg("UK Wordcloud.jpg", width = 1500)
+tweets_unnested %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("#F8766D", "#00BFC4"),
+                   max.words = 100)
 dev.off()

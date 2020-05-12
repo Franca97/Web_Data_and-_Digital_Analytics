@@ -25,7 +25,7 @@ setup_twitter_oauth(my_api_key,my_api_secret,my_access_token,my_access_token_sec
 #'
 #'  X Twitter Data (generic name, just replace user in the first line and in the graph title)
 #'  
-tweets <- userTimeline("@realDonaldTrump", n=3200, includeRts=T) # userTimline to get the n first tweets 
+tweets <- userTimeline("@USATODAYhealth", n=3200, includeRts=F) # userTimline to get the n first tweets 
 tweets_df <- twListToDF(tweets) # convert it into a dataframe
 
 #' Only keeping date after February 2020
@@ -36,11 +36,11 @@ tweets_df <- tweets_df %>% filter(created >="2020-02-01")
 mentions_per_day <- count(tweets_df, created)
 
 #' Plot the number of mentions per day to see if the amount of tweet increased with the corona spread 
-jpeg("Trump per Day.jpg", width = 1500)
+jpeg("USA Today Health per Day.jpg", width = 1500)
 ggplot(mentions_per_day, aes(created, n)) + geom_line()
 dev.off()
 
-Trump <- tweets_df
+Today <- tweets_df
 
 ##' Sentiment Analysis 
 ##' 
@@ -64,17 +64,17 @@ tweets_df <- inner_join(tweets_df, tweet_polarity, by ="id")
 date_sentiment <- aggregate(value ~ created, tweets_df, mean)
 
 #' Plot the average sentiment per date 
-jpeg("Trump.jpg", width = 1500)
+jpeg("USA Today Health.jpg", width = 1500)
 ggplot(date_sentiment, aes(x = created, y = value)) +
   geom_smooth(method="loess", size = 1, se=T, span = .5) +
   geom_hline(yintercept = 0, color = "grey") +
   ylab("Avg. Sentiment") +
   xlab("Date") +
-  ggtitle("Donald Trump Sentiment Evolution")
+  ggtitle("USA Today Health Sentiment Evolution")
 dev.off()
 
 #Wordcloud
-jpeg("Trump Wordcloud.jpg", width = 1500)
+jpeg("USA Today Health Wordcloud.jpg", width = 1500)
 tweets_unnested %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
@@ -86,7 +86,7 @@ dev.off()
 ##Topic Analysis
 #' Extract the actual text and convert this corpus into a Term Document Matrix "borisjohnson"
 #' 
-tweetsCorpus <- Corpus(VectorSource(Trump$text))
+tweetsCorpus <- Corpus(VectorSource(Maitlis$text))
 tweetsCorpus
 
 changeStrangeApostrophes <- content_transformer(function(x) {return (gsub(''', "'", x))})
@@ -118,13 +118,13 @@ tweetsCorpus <- tm_map(tweetsCorpus, stripWhitespace)
 #tweetsCorpus <- tm_map(tweetsCorpus, content_transformer(tolower))
 #Remove stopwords
 tweetsCorpus <-  tm_map(tweetsCorpus, removeWords, stopwords("english")) #when specifying function parameters, they are specified as arguments after the function
-#otherStopWords <- c(".", "ca", "your", "just", "even", "new", "use", "right", "one", "today", "time", "pick", "here", "will", "give", "otherwhise", "can", "here", "part", "look", "part") #other stopwords, they were defined after inspecting the results without them. You can try to execute this line, analyze the results and check for words that provide no meaning. You will find all of those.
+otherStopWords <- c("this","the",".", "ca", "your", "just", "even", "new", "use", "right", "one", "today", "time", "pick", "here", "will", "give", "otherwhise", "can", "here", "part", "look", "part") #other stopwords, they were defined after inspecting the results without them. You can try to execute this line, analyze the results and check for words that provide no meaning. You will find all of those.
 tweetsCorpus <- tm_map(tweetsCorpus, removeWords, otherStopWords)
 #Stem the document
 tweetsCorpus <- tm_map(tweetsCorpus, stemDocument, language = "english")
 
 #Wordcloud
-jpeg("Trump General Wordcloud.jpg", width = 1500)
+jpeg("Emily Maitlis General Wordcloud.jpg", width = 1500)
 wordcloud(tweetsCorpus, colors=brewer.pal(8,"Dark2"), max.words = 200, min.freq = 3)
 dev.off()
 
@@ -154,7 +154,7 @@ topTerms <- tidyLda %>%
   ungroup() %>%
   arrange(topic, -beta)
 
-jpeg("Trump Topics.jpg", width = 1500)
+jpeg("Emily Maitlis Topics.jpg", width = 1500)
 topTerms %>%
   mutate(term = reorder(term, beta)) %>%
   group_by(topic, term) %>%
@@ -172,7 +172,7 @@ topTerms %>%
 dev.off()
 
 ##Country sentiment analysis
-country_df <- rbind(Trump, DeGeneres, Today)
+country_df <- rbind(Trump, Oprah, Today)
 US <- country_df
 
 #' Convert the initial data into Tidy Text Format 
@@ -194,17 +194,17 @@ country_df <- inner_join(country_df, tweet_polarity, by ="id")
 date_sentiment <- aggregate(value ~ created, country_df, mean)
 
 #' Plot the average sentiment per date 
-jpeg("UK.jpg", width = 1500)
+jpeg("US.jpg", width = 1500)
 ggplot(date_sentiment, aes(x = created, y = value)) +
   geom_smooth(method="loess", size = 1, se=T, span = .5) +
   geom_hline(yintercept = 0, color = "grey") +
   ylab("Avg. Sentiment") +
   xlab("Date") +
-  ggtitle("UK Sentiment Evolution")
+  ggtitle("US Sentiment Evolution")
 dev.off()
 
 #Wordcloud
-jpeg("UK Wordcloud.jpg", width = 1500)
+jpeg("US Wordcloud.jpg", width = 1500)
 tweets_unnested %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%

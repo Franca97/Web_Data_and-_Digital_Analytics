@@ -1,6 +1,8 @@
 #'Setup
 remove(list = ls())
-
+#install.packages("remotes")
+#install.packages("textcat")
+#install.packages("stopwords")
 #'Install Packages 
 library(dplyr)  
 library(tidytext)  
@@ -13,7 +15,10 @@ library(topicmodels)
 library(tm)
 library(stringr)
 library(RColorBrewer)
-
+remotes::install_github("sebastiansauer/pradadata")
+library(pradadata)
+library(textcat)
+library(stopwords)
 #'Login to twitter developer
 options(httr_oauth_cache=T)
 my_api_key             <- "CeAIf6W3DcwZ0gGe3UHihhZgZ"
@@ -25,7 +30,7 @@ setup_twitter_oauth(my_api_key,my_api_secret,my_access_token,my_access_token_sec
 #'
 #'  X Twitter Data (generic name, just replace user in the first line and in the graph title)
 #'  
-tweets <- userTimeline("@USATODAYhealth", n=3200, includeRts=F) # userTimline to get the n first tweets 
+tweets <- userTimeline("@heutejournal", n=3200, includeRts=F) # userTimline to get the n first tweets 
 tweets_df <- twListToDF(tweets) # convert it into a dataframe
 
 #' Only keeping date after February 2020
@@ -50,11 +55,20 @@ tweets_df$id <- seq(1, nrow(tweets_df))
 tweets_unnested <- unnest_tokens(tweets_df, word, text)
 
 #' Remove stopwords and strange words 
-tweets_unnested <- tweets_unnested[!tweets_unnested$word %in% stop_words$word, ]
+stop_german <- data.frame(word = stopwords::stopwords("de"), stringsAsFactors = FALSE)
+View(stop_german)
+tweets_unnested <- tweets_unnested[!tweets_unnested$word %in% stop_german$word, ]
 tweets_unnested <- tweets_unnested[str_detect(tweets_unnested$word, "^[a-z']+$"),]
+nrow(tweets_unnested)
+sentiws 
 
 #' Pick token polarity from AFINN Lexicon 
-tweets_unnested <- inner_join(tweets_unnested, get_sentiments("afinn"), by = "word")
+sentiws <- as.data.frame(sentiws)
+sentiws$value <- sentiws$value*5 # Attention only run it once or clear your environment 
+sentiws <- as_tibble(sentiws)
+tweets_unnested <- inner_join(tweets_unnested, sentiws, by = "word") 
+View(tweets_unnested)
+
 
 #' Compute average polarity per tweet 
 tweet_polarity <- aggregate(value ~ id, tweets_unnested, mean)
@@ -89,7 +103,7 @@ dev.off()
 tweetsCorpus <- Corpus(VectorSource(Maitlis$text))
 tweetsCorpus
 
-changeStrangeApostrophes <- content_transformer(function(x) {return (gsub(''', "'", x))})
+changeStrangeApostrophes <- content_transformer(function(x){return (gsub("'", "'", x))})
 tweetsCorpus <- tm_map(tweetsCorpus, changeStrangeApostrophes)
 
 #Remove URLs

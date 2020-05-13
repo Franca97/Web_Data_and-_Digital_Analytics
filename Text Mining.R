@@ -19,6 +19,7 @@ remotes::install_github("sebastiansauer/pradadata")
 library(pradadata)
 library(textcat)
 library(stopwords)
+
 #'Login to twitter developer
 options(httr_oauth_cache=T)
 my_api_key             <- "CeAIf6W3DcwZ0gGe3UHihhZgZ"
@@ -41,7 +42,7 @@ tweets_df <- tweets_df %>% filter(created >="2020-02-01")
 mentions_per_day <- count(tweets_df, created)
 
 #' Plot the number of mentions per day to see if the amount of tweet increased with the corona spread 
-jpeg("USA Today Health per Day.jpg", width = 1500)
+jpeg("Heute Journal per Day.jpg", width = 1500)
 ggplot(mentions_per_day, aes(created, n)) + geom_line()
 dev.off()
 

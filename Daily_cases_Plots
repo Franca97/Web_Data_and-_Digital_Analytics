@@ -1,0 +1,90 @@
+
+library("janitor") 
+library("readxl") 
+library("writexl")
+library("igraph")
+library("ggplot2")
+library("tidyverse")
+theme_set(theme_minimal())
+
+getwd() #Make sure that you have the file you need in the Working directory or you apply a proper pathway 
+
+D1 <- read_excel("new_cases.xls") 
+D1 <- data.frame(D1) #Changed the excel file into a data frame
+Coutnries <- data.frame(D1$date,D1$Germany,D1$Switzerland, D1$United.Kingdom, D1$United.States)
+Coutnries <- as.tibble(Coutnries)
+
+Coutnries<-tibble::as_tibble(Coutnries)
+head(Coutnries)
+Coutnries <- Coutnries[45:135,]
+
+ggplot(data=Coutnries, aes(x=Coutnries$D1.date, y = Coutnries$D1.Germany)) +
+  geom_hline(yintercept = 10, color = "grey") +
+  geom_smooth(method="loess", size = 1, se=T) +
+  ylab("New Cases") +
+  xlab("Date") +
+  ggtitle("Germany new cases") +
+  ylim(0, 4000)
+
+ggplot(data=Coutnries, aes(x=Coutnries$D1.date, y = Coutnries$D1.United.States)) +
+  geom_hline(yintercept = 10, color = "grey") +
+  geom_smooth(method="loess", size = 1, se=T) +
+  ylab("New Cases") +
+  xlab("Date") +
+  ggtitle("U.S. new cases") +
+  ylim(0, 35000)
+
+ggplot(data=Coutnries, aes(x=Coutnries$D1.date, y = Coutnries$D1.United.Kingdom)) +
+  geom_hline(yintercept = 10, color = "grey") +
+  geom_smooth(method="loess", size = 1, se=T) +
+  ylab("New Cases") +
+  xlab("Date") +
+  ggtitle("U.K. new cases") +
+  ylim(0, 5000)
+
+ggplot(data=Coutnries, aes(x=Coutnries$D1.date, y = Coutnries$D1.Switzerland)) +
+  geom_hline(yintercept = 10, color = "grey") +
+  geom_smooth(method="loess", size = 1, se=T) +
+  ylab("New Cases") +
+  xlab("Date") +
+  ggtitle("Switzerland new cases") +
+  ylim(0, 800)
+
+
+
+
+
+#Same scale f
+
+ggplot(data=Coutnries, aes(x=Coutnries$D1.date, y = Coutnries$D1.Germany)) +
+  geom_hline(yintercept = 10, color = "grey") +
+  geom_smooth(method="loess", size = 1, se=T) +
+  ylab("New Cases") +
+  xlab("Date") +
+  ggtitle("Germany new cases") +
+  ylim(0, 35000)
+
+ggplot(data=Coutnries, aes(x=Coutnries$D1.date, y = Coutnries$D1.United.States)) +
+  geom_hline(yintercept = 10, color = "grey") +
+  geom_smooth(method="loess", size = 1, se=T) +
+  ylab("New Cases") +
+  xlab("Date") +
+  ggtitle("U.S. new cases") +
+  ylim(0, 35000)
+
+ggplot(data=Coutnries, aes(x=Coutnries$D1.date, y = Coutnries$D1.United.Kingdom)) +
+  geom_hline(yintercept = 10, color = "grey") +
+  geom_smooth(method="loess", size = 1, se=T) +
+  ylab("New Cases") +
+  xlab("Date") +
+  ggtitle("U.K. new cases") +
+  ylim(0, 35000)
+
+ggplot(data=Coutnries, aes(x=Coutnries$D1.date, y = Coutnries$D1.Switzerland)) +
+  geom_hline(yintercept = 10, color = "grey") +
+  geom_smooth(method="loess", size = 1, se=T) +
+  ylab("New Cases") +
+  xlab("Date") +
+  ggtitle("Switzerland new cases") +
+  ylim(0, 35000)
+
